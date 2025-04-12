@@ -9,17 +9,29 @@ import requests
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 YELP_API_KEY = st.secrets["YELP_API_KEY"]
 
-st.set_page_config(page_title="What to Eat Spinner", page_icon="🥜", layout="centered")
+st.set_page_config(page_title="Carl's Cravings", page_icon="🐦", layout="centered")
+
 
 # ------------------------------
 # Styling
 # ------------------------------
 st.markdown("""
     <style>
-    body { background-color: #6BA368; }
-    .stApp { background-color: #6BA368; color: black; text-align: center; font-size: 18px; }
-    h1, h2, h3, h4 { text-align: center; font-size: 32px; }
-    .highlight-meal { color: #004AAD; font-weight: bold; }
+    body { background-color: #000000; }
+    .stApp {
+        background-color: #000000;
+        color: white;
+        font-family: 'Arial', sans-serif;
+        text-align: center;
+    }
+    h1, h2, h3, h4 {
+        color: #ffffff;
+        text-align: center;
+    }
+    .highlight-meal {
+        color: #ff4d4d;
+        font-weight: bold;
+    }
     .stButton>button {
         background-color: #c1121f;
         color: white;
@@ -29,27 +41,55 @@ st.markdown("""
         font-weight: bold;
         transition: 0.2s ease-in-out;
         margin-top: 1em;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
     }
     .stButton>button:hover {
         background-color: white;
         color: #c1121f;
+        border: 2px solid #c1121f;
         transform: scale(1.05);
     }
     .result-card {
-        background-color: #fff;
-        color: black;
+        background-color: #1a1a1a;
+        color: white;
         border-radius: 12px;
         padding: 1em;
-        margin: 1em;
-        box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
+        margin: 1em auto;
+        max-width: 600px;
+        box-shadow: 0px 4px 12px rgba(255,255,255,0.1);
     }
     .runner-row {
         display: flex;
         justify-content: center;
         gap: 2em;
+        flex-wrap: wrap;
     }
+    /* Fix label/input descriptions */
+label, .stTextInput > div > label, .stSelectbox > div > label, .stMultiSelect > div > label {
+    color: white !important;
+}
+
+/* Fix Add button in typed input form */
+.stForm button {
+    background-color: #c1121f !important;
+    color: white !important;
+    border-radius: 12px !important;
+    font-weight: bold;
+    font-size: 18px;
+    margin-top: 10px;
+}
+.stForm button:hover {
+    background-color: white !important;
+    color: #c1121f !important;
+    border: 2px solid #c1121f;
+}
+
     </style>
 """, unsafe_allow_html=True)
+
+
 
 # ------------------------------
 # GPT Sass Generator
@@ -102,8 +142,9 @@ def search_yelp(term, zip_code, radius_miles=10, price="1,2,3,4", attributes=Non
 # ------------------------------
 # App UI
 # ------------------------------
-st.title("What to Eat Spinner")
-st.markdown("Guided by <strong>Cardinal Carl 🐦</strong>", unsafe_allow_html=True)
+st.title("Tell Me What to Eat")
+st.markdown("Guided by <strong>Carl 🐦</strong>, your sarcastic food spirit guide.", unsafe_allow_html=True)
+
 
 if "mode" not in st.session_state:
     st.session_state.mode = None
@@ -114,14 +155,24 @@ if st.session_state.mode is None:
     col1, col2 = st.columns(2)
     with col1:
         if st.button("💬 I'll type in my choices"):
-            st.session_state.mode = "typed"
+            st.session_state.clicked_mode = "typed"
     with col2:
         if st.button("🎯 Let Carl decide for me"):
-            st.session_state.mode = "filtered"
+            st.session_state.clicked_mode = "filtered"
+
+# Apply mode update after rerun
+if "clicked_mode" in st.session_state:
+    st.session_state.mode = st.session_state.clicked_mode
+    del st.session_state.clicked_mode
+    st.rerun()
+
+
 
 elif st.session_state.mode == "typed":
     if st.button("🔙 Go Back"):
-        st.session_state.mode = None
+        st.session_state.clicked_mode = None
+        st.rerun()
+
 
     if "typed_meals" not in st.session_state:
         st.session_state.typed_meals = []
@@ -136,28 +187,37 @@ elif st.session_state.mode == "typed":
         st.markdown("### Your entries:")
         st.markdown(" ".join([f"<code>{m}</code>" for m in st.session_state.typed_meals]), unsafe_allow_html=True)
 
-        if st.button("🎯 Spin!"):
-            winner = random.choice(st.session_state.typed_meals)
-            sass = get_carl_sass(winner)
-            st.markdown(f"<h2>🐦💬 {sass}</h2>", unsafe_allow_html=True)
-            with st.spinner("Fetching real nearby spots..."):
-                results = search_yelp(winner, zip_code)
-            if results:
-                st.markdown("### Nearby options:")
-                for place in results[:3]:
-                    name = place["name"]
-                    rating = place["rating"]
-                    address = ", ".join(place["location"]["display_address"])
-                    st.markdown(f"<div class='result-card'>**{name}**<br>\n🌟 {rating} stars<br>\n🏬 {address}<br>\n<a href='{place['url']}' target='_blank'>View on Yelp</a></div>", unsafe_allow_html=True)
+        if st.button("🎯 Spin with Carl!"):
+            if len(st.session_state.typed_meals) < 2:
+                st.warning("Please add at least two meal options for better randomness.")
             else:
-                st.warning("Carl came up empty. Try again!")
+                with st.spinner("Carl is thinking..."):
+                    meal_options = st.session_state.typed_meals.copy()
+                    random.shuffle(meal_options)
+
+                    new_result = meal_options[0]
+                    attempts = 0
+                    while (
+                            "last_result" in st.session_state
+                            and new_result == st.session_state.last_result
+                            and attempts < 5
+                    ):
+                        random.shuffle(meal_options)
+                        new_result = meal_options[0]
+                        attempts += 1
+
+                    st.session_state.last_result = new_result
+                    sass = get_carl_sass(new_result)
+                    st.markdown(f"<h2>🐦💬 {sass}</h2>", unsafe_allow_html=True)
 
         if st.button("Clear List"):
             st.session_state.typed_meals = []
 
 elif st.session_state.mode == "filtered":
     if st.button("🔙 Go Back"):
-        st.session_state.mode = None
+        st.session_state.clicked_mode = None
+        st.rerun()
+
 
     cuisine_options = [
         "American", "BBQ", "Bakery", "Brazilian", "Breakfast", "Brunch", "Burgers", "Cafe", "Cajun",
@@ -180,6 +240,7 @@ elif st.session_state.mode == "filtered":
         search_term = ", ".join(selected_cuisines) if selected_cuisines else "restaurants"
         with st.spinner("Carl is flapping around Yelp..."):
             results = search_yelp(search_term, zip_code, distance, price_map[price], delivery)
+            random.shuffle(results)
 
         if results:
             best = results[0]
