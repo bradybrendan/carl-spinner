@@ -17,7 +17,7 @@ def show_typed_input():
             st.rerun()
 
         with st.form("typed_form", clear_on_submit=True):
-            typed = st.text_input("Enter meal, cuisine, or restaurant:")
+            typed = st.text_input("Enter a meal or cuisine:")
             if st.form_submit_button("Add") and typed:
                 st.session_state.typed_meals.append(typed)
                 st.success(f"Added: {typed}")

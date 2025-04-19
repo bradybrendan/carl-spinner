@@ -49,3 +49,23 @@ def search_yelp(term, zip_code, radius_miles=10, price="1,2,3,4", attributes=Non
     response = requests.get("https://api.yelp.com/v3/businesses/search", headers=headers, params=params)
     data = response.json()
     return data.get("businesses", [])
+
+def get_recipe_steps(term):
+    prompt = f"Suggest a fun and practical recipe someone could try at home using {term}. Write in 3-6 clear steps."
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a helpful home cook sharing easy, fun recipe steps."},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=300,
+        temperature=0.7,
+    )
+
+    recipe = response.choices[0].message["content"]
+    steps = [step.strip("• ").strip() for step in recipe.split("\n") if step.strip()]
+    return steps
+
+
+
