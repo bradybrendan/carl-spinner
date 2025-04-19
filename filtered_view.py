@@ -30,7 +30,7 @@ def show_filtered_input(zip_code):
 
     if st.button("🎯 Let Carl Pick!"):
         search_term = ", ".join(selected_cuisines) if selected_cuisines else "restaurants"
-        zip_code = st.session_state.get("zip_code", "02492")
+        zip_code = st.session_state.zip_code
         with st.spinner("Carl is flapping around Yelp..."):
             results = search_yelp(search_term, zip_code, distance, price_map[price], delivery)
             random.shuffle(results)
