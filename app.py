@@ -14,7 +14,7 @@ from results_view import show_results_view
 
 # API KEYS
 openai.api_key = st.secrets["OPENAI_API_KEY"]
-YELP_API_KEY = st.secrets["YELP_API_KEY"]
+
 
 st.set_page_config(page_title="Carl's Cravings", page_icon="🐦", layout="centered")
 
