@@ -1,25 +1,43 @@
 import streamlit as st
 import random
-import time
 import openai
 import re
 import requests
+from PIL import Image
+
+# Modular components
+# Modular components
+from typed_view import show_typed_input
+from filtered_view import show_filtered_input
+from results_view import show_results_view
+
 
 # API KEYS
 openai.api_key = st.secrets["OPENAI_API_KEY"]
-YELP_API_KEY = st.secrets["YELP_API_KEY"]
 
-st.set_page_config(page_title="What to Eat Spinner", page_icon="🥜", layout="centered")
+
+st.set_page_config(page_title="Carl's Cravings", page_icon="🐦", layout="centered")
 
 # ------------------------------
 # Styling
 # ------------------------------
 st.markdown("""
     <style>
-    body { background-color: #6BA368; }
-    .stApp { background-color: #6BA368; color: black; text-align: center; font-size: 18px; }
-    h1, h2, h3, h4 { text-align: center; font-size: 32px; }
-    .highlight-meal { color: #004AAD; font-weight: bold; }
+    body { background-color: #000000; }
+    .stApp {
+        background-color: #000000;
+        color: white;
+        font-family: 'Arial', sans-serif;
+        text-align: center;
+    }
+    h1, h2, h3, h4 {
+        color: #ffffff;
+        text-align: center;
+    }
+    .highlight-meal {
+        color: #ff4d4d;
+        font-weight: bold;
+    }
     .stButton>button {
         background-color: #c1121f;
         color: white;
@@ -29,178 +47,183 @@ st.markdown("""
         font-weight: bold;
         transition: 0.2s ease-in-out;
         margin-top: 1em;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
     }
     .stButton>button:hover {
         background-color: white;
         color: #c1121f;
+        border: 2px solid #c1121f;
         transform: scale(1.05);
     }
     .result-card {
-        background-color: #fff;
-        color: black;
+        background-color: #1a1a1a;
+        color: white;
         border-radius: 12px;
         padding: 1em;
-        margin: 1em;
-        box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
+        margin: 1em auto;
+        max-width: 600px;
+        box-shadow: 0px 4px 12px rgba(255,255,255,0.1);
     }
     .runner-row {
         display: flex;
         justify-content: center;
         gap: 2em;
+        flex-wrap: wrap;
     }
+    label, .stTextInput > div > label, .stSelectbox > div > label, .stMultiSelect > div > label {
+        color: white !important;
+    }
+    .stForm button {
+        background-color: #c1121f !important;
+        color: white !important;
+        border-radius: 12px !important;
+        font-weight: bold;
+        font-size: 18px;
+        margin-top: 10px;
+    }
+    .stForm button:hover {
+        background-color: white !important;
+        color: #c1121f !important;
+        border: 2px solid #c1121f;
+    }
+    .spin-history-box {
+        background-color: rgba(193, 18, 31, 0.75);
+        color: white;
+        border-radius: 12px;
+        padding: 1.2em 1.5em;
+        margin-top: 2em;
+        margin-bottom: 1em;
+        max-width: 380px;
+        margin-left: auto;
+        margin-right: auto;
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+        text-align: center;
+    }
+    .spin-history-box .history-title {
+        font-weight: bold;
+        font-size: 1.1em;
+        margin-bottom: 0.6em;
+        display: block;
+    }
+    .spin-history-box ul {
+        list-style-type: disc;
+        list-style-position: inside;
+        padding-left: 0;
+        margin: 0 auto;
+        display: block;
+        text-align: left;
+        max-width: 300px;
+    }
+    .spin-history-box li {
+        margin: 3px 0;
+    }
+    .recipe-box {
+    background-color: rgba(193, 18, 31, 0.75); /* soft red */
+    color: white;
+    border-radius: 12px;
+    padding: 1.5em 2em;
+    margin-top: 2em;
+    margin-bottom: 1em;
+    max-width: 100%;
+    width: 100%;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+    text-align: left;
+}
+.recipe-box ul {
+    list-style-position: inside;
+    padding-left: 0;
+}
+.recipe-box li {
+    margin: 0.3em 0;
+}
+
+
     </style>
 """, unsafe_allow_html=True)
 
-# ------------------------------
-# GPT Sass Generator
-# ------------------------------
-def get_carl_sass(term):
-    prompt = (
-        f"You are Cardinal Carl, a sarcastic but lovable bird. "
-        f"Someone spun the wheel and landed on '{term}'. "
-        f"Write one short, witty, sassy sentence to convince them it's the right choice. "
-        f"Mention the term and make it under 30 words."
-    )
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.9,
-            max_tokens=60
-        )
-        sass = response.choices[0].message["content"]
-        pattern = re.compile(re.escape(term), re.IGNORECASE)
-        if not pattern.search(sass):
-            sass = f"Yeah, just go with <span class='highlight-meal'>{term}</span>. Even I’d eat that."
-        else:
-            sass = pattern.sub(f"<span class='highlight-meal'>{term}</span>", sass)
-        return sass
-    except Exception as e:
-        st.error(f"Carl Error: {e}")
-        return "Carl lost his voice. Try again."
+st.title("Tell Me What to Eat")
+st.markdown(
+    "<div style='margin-top: -10px; font-size: 16px; font-weight: 500; color: white;'>"
+    "Guided by <strong>Carl 🐦</strong>, your sarcastic food spirit guide."
+    "</div>",
+    unsafe_allow_html=True
+)
 
-# ------------------------------
-# Yelp Search
-# ------------------------------
-def search_yelp(term, zip_code, radius_miles=10, price="1,2,3,4", attributes=None):
-    headers = {"Authorization": f"Bearer {YELP_API_KEY}"}
-    params = {
-        "term": term,
-        "location": zip_code,
-        "radius": int(radius_miles * 1609.34),
-        "limit": 10,
-        "price": price,
-        "open_now": True
-    }
-    if attributes and attributes != "Any":
-        params["attributes"] = attributes.lower()
+# Show Carl Banner Image at the top of the home page
+# Remove excess space above
+st.markdown(
+    """
+    <style>
+        .block-container {
+            padding-top: 3rem;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-    response = requests.get("https://api.yelp.com/v3/businesses/search", headers=headers, params=params)
-    data = response.json()
-    return data.get("businesses", [])
+#from PIL import Image
+#banner = Image.open("images/carl-banner.png")
+#st.image(banner, use_container_width=True)
 
-# ------------------------------
-# App UI
-# ------------------------------
-st.title("What to Eat Spinner")
-st.markdown("Guided by <strong>Cardinal Carl 🐦</strong>", unsafe_allow_html=True)
 
+# Initialize state
 if "mode" not in st.session_state:
     st.session_state.mode = None
+if "spin_history" not in st.session_state:
+    st.session_state.spin_history = []
+if "result_mode" not in st.session_state:
+    st.session_state.result_mode = None
+if "result_sass" not in st.session_state:
+    st.session_state.result_sass = None
 
-zip_code = st.text_input("Enter your ZIP code:", max_chars=10, value="02492")
+if "result_data" not in st.session_state:
+    st.session_state.result_data = None
 
+
+if "zip_code" not in st.session_state:
+    st.session_state.zip_code = "02108"
+
+if st.session_state.mode != "results":
+    st.session_state.zip_code = st.text_input("Enter your ZIP code:", max_chars=10, value=st.session_state.zip_code)
+
+
+# Routing
+# Routing
 if st.session_state.mode is None:
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("💬 I'll type in my choices"):
+        if st.button("I'm Cooking"):
             st.session_state.mode = "typed"
+            st.session_state.result_mode = None
+            st.session_state.result_data = None
+            st.session_state.recipe_suggestion = None
+            st.session_state.show_recipe = False
+            st.rerun()
+
     with col2:
-        if st.button("🎯 Let Carl decide for me"):
+        if st.button("Find Me A Restaurant"):
             st.session_state.mode = "filtered"
+            st.session_state.result_mode = None
+            st.session_state.result_data = None
+            st.session_state.recipe_suggestion = None
+            st.session_state.show_recipe = False
+            st.rerun()
 
 elif st.session_state.mode == "typed":
-    if st.button("🔙 Go Back"):
-        st.session_state.mode = None
-
-    if "typed_meals" not in st.session_state:
-        st.session_state.typed_meals = []
-
-    with st.form("typed_form", clear_on_submit=True):
-        typed = st.text_input("Enter meal, cuisine, or restaurant:")
-        if st.form_submit_button("Add") and typed:
-            st.session_state.typed_meals.append(typed)
-            st.success(f"Added: {typed}")
-
-    if st.session_state.typed_meals:
-        st.markdown("### Your entries:")
-        st.markdown(" ".join([f"<code>{m}</code>" for m in st.session_state.typed_meals]), unsafe_allow_html=True)
-
-        if st.button("🎯 Spin!"):
-            winner = random.choice(st.session_state.typed_meals)
-            sass = get_carl_sass(winner)
-            st.markdown(f"<h2>🐦💬 {sass}</h2>", unsafe_allow_html=True)
-            with st.spinner("Fetching real nearby spots..."):
-                results = search_yelp(winner, zip_code)
-            if results:
-                st.markdown("### Nearby options:")
-                for place in results[:3]:
-                    name = place["name"]
-                    rating = place["rating"]
-                    address = ", ".join(place["location"]["display_address"])
-                    st.markdown(f"<div class='result-card'>**{name}**<br>\n🌟 {rating} stars<br>\n🏬 {address}<br>\n<a href='{place['url']}' target='_blank'>View on Yelp</a></div>", unsafe_allow_html=True)
-            else:
-                st.warning("Carl came up empty. Try again!")
-
-        if st.button("Clear List"):
-            st.session_state.typed_meals = []
+    show_typed_input()
 
 elif st.session_state.mode == "filtered":
-    if st.button("🔙 Go Back"):
-        st.session_state.mode = None
+    show_filtered_input(st.session_state.zip_code)
 
-    cuisine_options = [
-        "American", "BBQ", "Bakery", "Brazilian", "Breakfast", "Brunch", "Burgers", "Cafe", "Cajun",
-        "Caribbean", "Chinese", "Colombian", "Cuban", "Deli", "Diner", "Ethiopian", "Fast Food",
-        "Filipino", "French", "Gastropub", "German", "Greek", "Halal", "Hawaiian", "Healthy",
-        "Indian", "Indonesian", "Irish", "Italian", "Japanese", "Jewish", "Korean", "Latin American",
-        "Lebanese", "Malaysian", "Mediterranean", "Mexican", "Middle Eastern", "Nigerian", "Pakistani",
-        "Peruvian", "Pizza", "Polish", "Portuguese", "Pub", "Ramen", "Russian", "Sandwiches", "Seafood",
-        "Soul Food", "Southern", "Spanish", "Steak", "Sushi", "Taiwanese", "Tex-Mex", "Thai",
-        "Turkish", "Vegan", "Vegetarian", "Vietnamese"
-    ]
-    selected_cuisines = st.multiselect("Pick cuisines (type to search):", options=cuisine_options)
-    price_map = {"$": "1", "$$": "2", "$$$": "3", "$$$$": "4"}
-    price = st.select_slider("Price range", options=["$", "$$", "$$$", "$$$$"], value="$$")
-    delivery = st.selectbox("Dining method:", ["Any", "Delivery", "Pickup"])
-    distance_label = st.selectbox("Distance:", ["30", "15", "10", "5", "2", "1"], index=2)
-    distance = int(distance_label)
+elif st.session_state.mode == "results":
+    show_results_view()
 
-    if st.button("🎯 Let Carl Pick!"):
-        search_term = ", ".join(selected_cuisines) if selected_cuisines else "restaurants"
-        with st.spinner("Carl is flapping around Yelp..."):
-            results = search_yelp(search_term, zip_code, distance, price_map[price], delivery)
+st.markdown("---")
+st.markdown(
+    "💬 Got thoughts for Carl? [Leave feedback here](https://docs.google.com/forms/d/e/1FAIpQLSdR4Dz0U0FNw0fEs_ufRxy2nqHNvTbQkA-gNs-hnA3F8pA1zA/viewform?usp=dialog)",
+    unsafe_allow_html=True
+)
 
-        if results:
-            best = results[0]
-            runners_up = results[1:3]
-            best_sass = get_carl_sass(best["name"])
-
-            st.balloons()
-            st.markdown(f"<h2>🐦💬 {best_sass}</h2>", unsafe_allow_html=True)
-            name = best["name"]
-            rating = best["rating"]
-            address = ", ".join(best["location"]["display_address"])
-            st.markdown(f"<div class='result-card'><strong>🏆 Top Pick: {name}</strong><br>\n🌟 {rating} stars<br>\n🏬 {address}<br>\n<a href='{best['url']}' target='_blank'>View on Yelp</a></div>", unsafe_allow_html=True)
-
-            if runners_up:
-                st.markdown("### Runners-up:")
-                st.markdown("<div class='runner-row'>", unsafe_allow_html=True)
-                for place in runners_up:
-                    name = place["name"]
-                    rating = place["rating"]
-                    address = ", ".join(place["location"]["display_address"])
-                    st.markdown(f"<div class='result-card'><strong>{name}</strong><br>\n🌟 {rating} stars<br>\n🏬 {address}<br>\n<a href='{place['url']}' target='_blank'>View on Yelp</a></div>", unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-        else:
-            st.warning("Carl couldn’t find any good spots. Try a wider search.")
