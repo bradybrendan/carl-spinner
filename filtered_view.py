@@ -1,7 +1,6 @@
-# filtered_view.py
 import streamlit as st
 import random
-from utils import get_carl_sass, search_yelp  # make sure this is correct in your setup
+from utils import get_carl_sass, search_places
 
 def show_filtered_input(zip_code):
     if st.button("🔙 Go Back"):
@@ -22,17 +21,24 @@ def show_filtered_input(zip_code):
 
     st.markdown("### What’s your vibe today?")
     selected_cuisines = st.multiselect("Pick cuisines (type to search):", options=cuisine_options)
-    price_map = {"$": "1", "$$": "2", "$$$": "3", "$$$$": "4"}
-    price = st.select_slider("Price range", options=["$", "$$", "$$$", "$$$$"], value="$$")
-    delivery = st.selectbox("Dining method:", ["Any", "Delivery", "Pickup"])
+    price_map = {"$": 0, "$$": 1, "$$$": 2, "$$$$": 3}
+    price_symbol = st.select_slider("Price range", options=["$", "$$", "$$$", "$$$$"], value="$$")
+    price_level = price_map[price_symbol]
+
+    delivery = st.selectbox("Dining method:", ["Any", "Delivery", "Pickup"])  # Currently unused with Google API
     distance_label = st.selectbox("Distance (miles):", ["30", "15", "10", "5", "2", "1"], index=2)
     distance = int(distance_label)
 
     if st.button("🎯 Let Carl Pick!"):
-        search_term = ", ".join(selected_cuisines) if selected_cuisines else "restaurants"
-        zip_code = st.session_state.get("zip_code", "02492")
-        with st.spinner("Carl is flapping around Yelp..."):
-            results = search_yelp(search_term, zip_code, distance, price_map[price], delivery)
+        keyword = ", ".join(selected_cuisines) if selected_cuisines else "restaurants"
+
+        with st.spinner("Carl is flapping around the web..."):
+            results = search_places(
+                zip_code=zip_code,
+                radius_miles=distance,
+                keyword=keyword,
+                price_level=price_level
+            )
             random.shuffle(results)
 
         if results:
@@ -47,10 +53,8 @@ def show_filtered_input(zip_code):
                 "runners_up": runners_up,
             }
             st.session_state.result_mode = "filtered"
-            st.session_state.result_sass = get_carl_sass(best["name"])  # <--- Add this
+            st.session_state.result_sass = get_carl_sass(best["name"])
             st.session_state.mode = "results"
             st.rerun()
-
-
         else:
             st.warning("Carl couldn’t find any good spots. Try a wider search.")

@@ -119,14 +119,55 @@ st.markdown("""
     .spin-history-box li {
         margin: 3px 0;
     }
+    .recipe-box {
+    background-color: rgba(193, 18, 31, 0.75); /* soft red */
+    color: white;
+    border-radius: 12px;
+    padding: 1.5em 2em;
+    margin-top: 2em;
+    margin-bottom: 1em;
+    max-width: 100%;
+    width: 100%;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+    text-align: left;
+}
+.recipe-box ul {
+    list-style-position: inside;
+    padding-left: 0;
+}
+.recipe-box li {
+    margin: 0.3em 0;
+}
+
+
     </style>
 """, unsafe_allow_html=True)
 
-# ------------------------------
-# Main UI Routing
-# ------------------------------
 st.title("Tell Me What to Eat")
-st.markdown("Guided by <strong>Carl 🐦</strong>, your sarcastic food spirit guide.", unsafe_allow_html=True)
+st.markdown(
+    "<div style='margin-top: -10px; font-size: 16px; font-weight: 500; color: white;'>"
+    "Guided by <strong>Carl 🐦</strong>, your sarcastic food spirit guide."
+    "</div>",
+    unsafe_allow_html=True
+)
+
+# Show Carl Banner Image at the top of the home page
+# Remove excess space above
+st.markdown(
+    """
+    <style>
+        .block-container {
+            padding-top: 3rem;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+#from PIL import Image
+#banner = Image.open("images/carl-banner.png")
+#st.image(banner, use_container_width=True)
+
 
 # Initialize state
 if "mode" not in st.session_state:
@@ -142,25 +183,47 @@ if "result_data" not in st.session_state:
     st.session_state.result_data = None
 
 
-zip_code = st.text_input("Enter your ZIP code:", max_chars=10, value="02492")
+if "zip_code" not in st.session_state:
+    st.session_state.zip_code = "02108"
 
+if st.session_state.mode != "results":
+    st.session_state.zip_code = st.text_input("Enter your ZIP code:", max_chars=10, value=st.session_state.zip_code)
+
+
+# Routing
 # Routing
 if st.session_state.mode is None:
     col1, col2 = st.columns(2)
-    if col1.button("💬 I'll type in my choices"):
-        st.session_state.mode = "typed"
-        st.rerun()
-    if col2.button("🎯 Let Carl decide for me"):
-        st.session_state.mode = "filtered"
-        st.rerun()
+    with col1:
+        if st.button("I'm Cooking"):
+            st.session_state.mode = "typed"
+            st.session_state.result_mode = None
+            st.session_state.result_data = None
+            st.session_state.recipe_suggestion = None
+            st.session_state.show_recipe = False
+            st.rerun()
 
+    with col2:
+        if st.button("Find Me A Restaurant"):
+            st.session_state.mode = "filtered"
+            st.session_state.result_mode = None
+            st.session_state.result_data = None
+            st.session_state.recipe_suggestion = None
+            st.session_state.show_recipe = False
+            st.rerun()
 
 elif st.session_state.mode == "typed":
     show_typed_input()
 
-
 elif st.session_state.mode == "filtered":
-    show_filtered_input(zip_code)
+    show_filtered_input(st.session_state.zip_code)
 
 elif st.session_state.mode == "results":
     show_results_view()
+
+st.markdown("---")
+st.markdown(
+    "💬 Got thoughts for Carl? [Leave feedback here](https://docs.google.com/forms/d/e/1FAIpQLSdR4Dz0U0FNw0fEs_ufRxy2nqHNvTbQkA-gNs-hnA3F8pA1zA/viewform?usp=dialog)",
+    unsafe_allow_html=True
+)
+
