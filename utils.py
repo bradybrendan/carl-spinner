@@ -28,7 +28,8 @@ def get_carl_sass(term):
             sass = pattern.sub(f"<span class='highlight-meal'>{term}</span>", sass)
         return sass
     except Exception as e:
-        st.error(f"Carl Error: {e}")
+        st.error("Carl Error: Failed to generate sass.")
+        st.write(f"DEBUG: {e}")
         return "Carl lost his voice. Try again."
 
 
