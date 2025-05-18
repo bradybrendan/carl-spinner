@@ -227,23 +227,4 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-#temporary
-st.markdown("---")
-st.markdown("### 🔧 OpenAI API Test")
 
-if st.button("Test Carl's Voice"):
-    import openai
-    openai.api_key = st.secrets["OPENAI_API_KEY"]
-
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": "Say something sarcastic about sushi."}],
-            max_tokens=30,
-            temperature=0.8,
-        )
-        st.success("Carl spoke:")
-        st.write(response.choices[0].message["content"])
-    except Exception as e:
-        st.error("OpenAI error:")
-        st.exception(e)
