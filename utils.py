@@ -5,7 +5,6 @@ import requests
 import streamlit as st
 
 openai.api_key = st.secrets["OPENAI_API_KEY"]
-YELP_API_KEY = st.secrets["YELP_API_KEY"]
 
 def get_carl_sass(term):
     prompt = (
